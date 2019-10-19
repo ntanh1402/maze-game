@@ -17,11 +17,14 @@ import GestureRecognizer, { swipeDirections } from 'react-native-swipe-gestures'
 import { MazeHelper } from './maze.js'
 import { Ball } from './ball.js'
 
-const DEVICE_WIDTH = Dimensions.get('window').width - 20;
-const DEVICE_HEIGHT = Dimensions.get('window').height - 20;
+const size = 10
+const paddingTop = 20;
+const paddingLeft = 20;
+
+const DEVICE_WIDTH = Dimensions.get('window').width - paddingLeft;
+const DEVICE_HEIGHT = Dimensions.get('window').height - paddingTop;
 const DEVICE_RATE = DEVICE_HEIGHT / DEVICE_WIDTH;
 
-const size = 15
 const dimensions = {
   y: size,
   x: Math.floor(DEVICE_RATE * size) - 1
@@ -32,55 +35,58 @@ export default class App extends Component {
   constructor(props) {
     super(props);
 
-    this.mazeHelper = new MazeHelper(dimensions.x, dimensions.y);
-    this.mazeHelper.generateMazeNodes();
+    let cellSize = Math.floor(DEVICE_WIDTH / dimensions.y);
 
-    this.ball = new Ball(12, 12, DEVICE_WIDTH / dimensions.y);
+    this.mazeHelper = new MazeHelper(dimensions.x, dimensions.y, paddingTop, paddingLeft, cellSize);
+    this.ball = new Ball(paddingTop, paddingLeft, cellSize, 0, 0);
+
+    this.reloadGame();
 
     this.onSwipe = this.onSwipe.bind(this);
   }
 
-  drawMaze() {
-    let maze = this.mazeHelper.maze;
-    let tempArr = [];
+  reloadGame() {
+    this.mazeHelper.generateMazeNodes();
 
-    for (let i = 0; i < maze.length; i++) {
-      let temp = [];
-      for (let j = 0; j < maze[i].length; j++) {
-        let t = maze[i][j].paths.t ? 0 : 1;
-        let b = maze[i][j].paths.b ? 0 : 1;
-        let l = maze[i][j].paths.l ? 0 : 1;
-        let r = maze[i][j].paths.r ? 0 : 1;
-
-        //console.log(maze[i][j])
-        //console.log(t + ' ' + b + ' ' + l + ' ' + r);
-
-
-        temp.push(<View style={[styles.SquareShapeView, { borderTopWidth: t, borderBottomWidth: b, borderLeftWidth: l, borderRightWidth: r }]} />)
-      }
-
-      tempArr.push(<View style={styles.lineContainer}>{temp}</View>)
+    let randomStartNodeId = this.mazeHelper.getRandomInt(dimensions.x * dimensions.y);
+    while (randomStartNodeId == this.mazeHelper.targetNodeId) {
+      randomStartNodeId = this.mazeHelper.getRandomInt(dimensions.x * dimensions.y);
     }
 
-    return tempArr;
+    this.ball.x = Math.floor(randomStartNodeId / dimensions.y);
+    this.ball.y = randomStartNodeId - this.ball.x * dimensions.y;
   }
+
 
   onSwipe(gestureName, gestureState) {
     const { SWIPE_UP, SWIPE_DOWN, SWIPE_LEFT, SWIPE_RIGHT } = swipeDirections;
     switch (gestureName) {
       case SWIPE_UP:
-        this.ball.moveTop();
+        if (this.mazeHelper.maze[this.ball.x][this.ball.y].paths.t) {
+          this.ball.moveTop();
+        }
         break;
       case SWIPE_DOWN:
-        this.ball.moveBottom();
+        if (this.mazeHelper.maze[this.ball.x][this.ball.y].paths.b) {
+          this.ball.moveBottom();
+        }
         break;
       case SWIPE_LEFT:
-        this.ball.moveLeft();
+        if (this.mazeHelper.maze[this.ball.x][this.ball.y].paths.l) {
+          this.ball.moveLeft();
+        }
         break;
       case SWIPE_RIGHT:
-        this.ball.moveRight();
+        if (this.mazeHelper.maze[this.ball.x][this.ball.y].paths.r) {
+          this.ball.moveRight();
+        }
         break;
     }
+
+    if (this.mazeHelper.maze[this.ball.x][this.ball.y].id == this.mazeHelper.targetNodeId) {
+      this.reloadGame();
+    }
+
     this.setState({});
   }
 
@@ -99,7 +105,7 @@ export default class App extends Component {
         style={styles.container}>
 
         {
-          this.drawMaze()
+          this.mazeHelper.drawMaze()
         }
 
         {
@@ -110,7 +116,7 @@ export default class App extends Component {
 
     );
   }
-  
+
 }
 
 const styles = StyleSheet.create({
@@ -120,24 +126,8 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
     alignItems: 'flex-start',
     backgroundColor: '#F5FCFF',
-    padding: 10
-  },
-
-  lineContainer: {
-    flexDirection: "row",
-    justifyContent: 'flex-start',
-    alignItems: 'flex-start',
-    backgroundColor: '#F5FCFF',
-  },
-
-  SquareShapeView: {
-    width: DEVICE_WIDTH / dimensions.y,
-    height: DEVICE_WIDTH / dimensions.y,
-    backgroundColor: '#F5FCFF',
-    borderColor: 'black',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 0
-  },
+    paddingTop: paddingTop,
+    paddingLeft: paddingLeft
+  }
 
 });
