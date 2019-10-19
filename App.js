@@ -10,24 +10,24 @@ import {
   Dimensions
 } from 'react-native';
 
-import { white } from 'ansi-colors';
+import { white, bold } from 'ansi-colors';
 
 import GestureRecognizer, { swipeDirections } from 'react-native-swipe-gestures';
 
 import { MazeHelper } from './maze.js'
 import { Ball } from './ball.js'
 
-const size = 10
 const paddingTop = 20;
 const paddingLeft = 20;
 
-const DEVICE_WIDTH = Dimensions.get('window').width - paddingLeft;
+const DEVICE_WIDTH = Dimensions.get('window').width - paddingLeft * 2;
 const DEVICE_HEIGHT = Dimensions.get('window').height - paddingTop;
 const DEVICE_RATE = DEVICE_HEIGHT / DEVICE_WIDTH;
 
-const dimensions = {
+let size = 3
+let dimensions = {
   y: size,
-  x: Math.floor(DEVICE_RATE * size) - 1
+  x: size//Math.floor(DEVICE_RATE * size) - 1
 }
 
 export default class App extends Component {
@@ -35,17 +35,19 @@ export default class App extends Component {
   constructor(props) {
     super(props);
 
-    let cellSize = Math.floor(DEVICE_WIDTH / dimensions.y);
-
-    this.mazeHelper = new MazeHelper(dimensions.x, dimensions.y, paddingTop, paddingLeft, cellSize);
-    this.ball = new Ball(paddingTop, paddingLeft, cellSize, 0, 0);
-
     this.reloadGame();
+    this.state = {
+      level: 'LEVEL ' + (size - 2)
+    }
 
     this.onSwipe = this.onSwipe.bind(this);
   }
 
   reloadGame() {
+    let cellSize = Math.floor(DEVICE_WIDTH / dimensions.y);
+
+    this.mazeHelper = new MazeHelper(dimensions.x, dimensions.y, paddingTop, paddingLeft, cellSize);
+
     this.mazeHelper.generateMazeNodes();
 
     let randomStartNodeId = this.mazeHelper.getRandomInt(dimensions.x * dimensions.y);
@@ -53,8 +55,9 @@ export default class App extends Component {
       randomStartNodeId = this.mazeHelper.getRandomInt(dimensions.x * dimensions.y);
     }
 
-    this.ball.x = Math.floor(randomStartNodeId / dimensions.y);
-    this.ball.y = randomStartNodeId - this.ball.x * dimensions.y;
+    let x = Math.floor(randomStartNodeId / dimensions.y);
+    let y = randomStartNodeId - x * dimensions.y;
+    this.ball = new Ball(paddingTop, paddingLeft, cellSize, x, y);
   }
 
 
@@ -84,10 +87,13 @@ export default class App extends Component {
     }
 
     if (this.mazeHelper.maze[this.ball.x][this.ball.y].id == this.mazeHelper.targetNodeId) {
+      size++;
+      dimensions.x++;
+      dimensions.y++;
       this.reloadGame();
     }
 
-    this.setState({});
+    this.setState({ level: 'LEVEL ' + (size - 2) });
   }
 
 
@@ -102,15 +108,25 @@ export default class App extends Component {
       <GestureRecognizer
         onSwipe={this.onSwipe}
         config={config}
-        style={styles.container}>
+        style={{ flex: 1 }}>
 
-        {
-          this.mazeHelper.drawMaze()
-        }
+        <View style={styles.header}>
+          <Text style={styles.level}>
+            {this.state.level}
+          </Text>
+        </View>
 
-        {
-          this.ball.drawBall()
-        }
+        <View style={styles.container}>
+
+          {
+            this.mazeHelper.drawMaze()
+          }
+
+          {
+            this.ball.drawBall()
+          }
+
+        </View>
 
       </GestureRecognizer>
 
@@ -122,12 +138,27 @@ export default class App extends Component {
 const styles = StyleSheet.create({
 
   container: {
-    flex: 1,
+    flex: 4,
     justifyContent: 'flex-start',
     alignItems: 'flex-start',
     backgroundColor: '#F5FCFF',
     paddingTop: paddingTop,
-    paddingLeft: paddingLeft
+    paddingLeft: paddingLeft,
+    paddingRight: paddingLeft
+  },
+
+  header: {
+    flex: 1,
+    backgroundColor: '#F5FCFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    //borderWidth: 1
+  },
+
+  level: {
+    color: 'blue',
+    fontWeight: 'bold',
+    fontSize: 30,
   }
 
 });
