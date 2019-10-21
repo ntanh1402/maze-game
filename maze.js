@@ -1,15 +1,15 @@
 import React from 'react';
 import {
   StyleSheet,
-  View
+  View,
+  Text
 } from 'react-native';
 
-export class MazeHelper {
+export class Maze {
   dimensions = {
     x: 10,
     y: 10
   };
-
 
   constructor(row, column, top, left, cellSize) {
     this.dimensions.x = row;
@@ -17,22 +17,18 @@ export class MazeHelper {
     this.top = top;
     this.left = left;
     this.cellSize = cellSize;
-    this.targetNodeId = -1;   
-    this.maze = [];
+    this.targetNodeId = -1;
+    this.nodes = [];
+
+    this.generateMazeNodes();
   }
 
   drawMaze() {
-    let maze = this.maze;
     let tempArr = [];
 
-    for (let i = 0; i < maze.length; i++) {
-      for (let j = 0; j < maze[i].length; j++) {
-        let t = maze[i][j].paths.t ? 0 : 1;
-        let b = maze[i][j].paths.b ? 0 : 1;
-        let l = maze[i][j].paths.l ? 0 : 1;
-        let r = maze[i][j].paths.r ? 0 : 1;
-
-        tempArr.push(<View style={[styles.SquareShapeView, { top: maze[i][j].top, left: maze[i][j].left, width: this.cellSize, height: this.cellSize, borderTopWidth: t, borderBottomWidth: b, borderLeftWidth: l, borderRightWidth: r }]} />)
+    for (let i = 0; i < this.nodes.length; i++) {
+      for (let j = 0; j < this.nodes[i].length; j++) {
+        tempArr.push(this.nodes[i][j].draw());
       }
     }
 
@@ -41,18 +37,18 @@ export class MazeHelper {
 
   generateMazeNodes() {
     let index = 0;
-    this.maze = Array(this.dimensions.x)
+    this.nodes = Array(this.dimensions.x)
       .fill()
       .map(() => {
         return Array(this.dimensions.y)
           .fill()
-          .map(node => new Node(index++));
+          .map(node => new Node(index++, Maze.NODE_TYPE.PATH, this.cellSize));
       });
 
-    for (let i = 0; i < this.maze.length; i++) {
-      for (let j = 0; j < this.maze[i].length; j++) {
-        this.maze[i][j].top = this.top + i * (this.cellSize - 1);
-        this.maze[i][j].left = this.left + j * (this.cellSize - 1);
+    for (let i = 0; i < this.nodes.length; i++) {
+      for (let j = 0; j < this.nodes[i].length; j++) {
+        this.nodes[i][j].top = this.top + i * (this.cellSize - 1);
+        this.nodes[i][j].left = this.left + j * (this.cellSize - 1);
       }
     }
 
@@ -81,6 +77,7 @@ export class MazeHelper {
     }
 
     this.selectTargetNode();
+    this.generateSpecialNodes();
 
     //console.log('finish');
   };
@@ -97,38 +94,94 @@ export class MazeHelper {
     let targetNode;
     let t = edgeNodeNo - (this.dimensions.x - 1);
     if (randomNo > t) {
-      targetNode = this.maze[this.dimensions.x - (randomNo - t)][0];
+      targetNode = this.nodes[this.dimensions.x - (randomNo - t)][0];
 
       targetNode.paths.l = true;
+      targetNode.type = Maze.NODE_TYPE.TARGET;
+      targetNode.typeValue = Math.floor(Math.sqrt(this.dimensions.x * this.dimensions.y));
       this.targetNodeId = targetNode.id;
       return;
     }
 
     t = t - (this.dimensions.y - 1);
     if (randomNo > t) {
-      targetNode = this.maze[this.dimensions.x - 1][this.dimensions.y - (randomNo - t)];
+      targetNode = this.nodes[this.dimensions.x - 1][this.dimensions.y - (randomNo - t)];
 
       targetNode.paths.b = true;
+      targetNode.type = Maze.NODE_TYPE.TARGET;
+      targetNode.typeValue = Math.floor(Math.sqrt(this.dimensions.x * this.dimensions.y));
       this.targetNodeId = targetNode.id;
       return;
     }
 
     t = t - (this.dimensions.x - 1);
     if (randomNo > t) {
-      targetNode = this.maze[randomNo - t - 1][this.dimensions.y - 1];
+      targetNode = this.nodes[randomNo - t - 1][this.dimensions.y - 1];
 
       targetNode.paths.r = true;
+      targetNode.type = Maze.NODE_TYPE.TARGET;
+      targetNode.typeValue = Math.floor(Math.sqrt(this.dimensions.x * this.dimensions.y));
       this.targetNodeId = targetNode.id;
       return;
     }
 
     t = t - (this.dimensions.y - 1);
     if (randomNo > t) {
-      targetNode = this.maze[0][randomNo - t - 1];
+      targetNode = this.nodes[0][randomNo - t - 1];
 
       targetNode.paths.t = true;
+      targetNode.type = Maze.NODE_TYPE.TARGET;
+      targetNode.typeValue = Math.floor(Math.sqrt(this.dimensions.x * this.dimensions.y));
       this.targetNodeId = targetNode.id;
       return;
+    }
+  }
+
+  generateSpecialNodes() {
+    this.selectPointNodes();
+    this.selectBombNodes();
+    this.selectHoleNodes();
+  }
+
+  selectPointNodes() {
+    let max = this.getRandomNumber(1, this.dimensions.y / 2);
+    console.log('selectPointNodes ' + max);
+
+    for (let i = 0; i < max; i++) {
+      let ranNodeId = this.getRandomInt(this.dimensions.x * this.dimensions.y);
+      let ranNode = this.getNodeById(ranNodeId);
+      if (ranNode.type == Maze.NODE_TYPE.PATH) {
+        ranNode.type = Maze.NODE_TYPE.POINT;
+        ranNode.typeValue = this.getRandomInt(100);
+      }
+    }
+  }
+
+  selectBombNodes() {
+    let max = this.getRandomNumber(1, this.dimensions.y / 2);
+    console.log('selectBombNodes ' + max);
+
+    for (let i = 0; i < max; i++) {
+      let ranNodeId = this.getRandomInt(this.dimensions.x * this.dimensions.y);
+      let ranNode = this.getNodeById(ranNodeId);
+      if (ranNode.type == Maze.NODE_TYPE.PATH) {
+        ranNode.type = Maze.NODE_TYPE.BOMB;
+        ranNode.typeValue = 0 - this.getRandomInt(100);
+      }
+    }
+  }
+
+  selectHoleNodes() {
+    let max = this.getRandomNumber(1, this.dimensions.y / 2);
+    console.log('selectHoleNodes ' + max);
+
+    for (let i = 0; i < max; i++) {
+      let ranNodeId = this.getRandomInt(this.dimensions.x * this.dimensions.y);
+      let ranNode = this.getNodeById(ranNodeId);
+      if (ranNode.type == Maze.NODE_TYPE.PATH) {
+        ranNode.type = Maze.NODE_TYPE.HOLE;
+        ranNode.typeValue = this.getRandomInt(this.dimensions.x * this.dimensions.y);
+      }
     }
   }
 
@@ -139,10 +192,10 @@ export class MazeHelper {
 
     //console.log(x + " " + y);
 
-    let leftId = y > 0 ? this.maze[x][y - 1].id : -1;
-    let rightId = y < this.dimensions.y - 1 ? this.maze[x][y + 1].id : -1;
-    let topId = x > 0 ? this.maze[x - 1][y].id : -1;
-    let bottomId = x < this.dimensions.x - 1 ? this.maze[x + 1][y].id : -1;
+    let leftId = y > 0 ? this.nodes[x][y - 1].id : -1;
+    let rightId = y < this.dimensions.y - 1 ? this.nodes[x][y + 1].id : -1;
+    let topId = x > 0 ? this.nodes[x - 1][y].id : -1;
+    let bottomId = x < this.dimensions.x - 1 ? this.nodes[x + 1][y].id : -1;
 
     //console.log(curId + ": " + leftId + " " + rightId + " " + topId + " " + bottomId);
 
@@ -178,6 +231,10 @@ export class MazeHelper {
 
   getRandomInt(max) {
     return Math.floor(Math.random() * Math.floor(max));
+  };
+
+  getRandomNumber(min, max) {
+    return Math.max(min, Math.floor(Math.random() * Math.floor(max)));
   };
 
   createConnectionBetweenNodes(srcId, desId) {
@@ -218,18 +275,79 @@ export class MazeHelper {
     let x = Math.floor(nodeId / this.dimensions.y);
     let y = nodeId - x * this.dimensions.y;
     //console.log(x + " " + y);
-    return this.maze[x][y];
+    return this.nodes[x][y];
   };
 }
 
+Maze.NODE_TYPE = {
+  PATH: 1,
+  TARGET: 2,
+  BOMB: 3,
+  HOLE: 4,
+  POINT: 5
+}
+
 class Node {
-  constructor(id) {
+  constructor(id, type, cellSize) {
     this.id = id;
-    this.type = "path";
     this.paths = new Paths();
     this.top = 0;
     this.left = 0;
+    this.cellSize = cellSize;
+    this.type = type;
+    this.typeValue = 0;
   }
+
+  draw() {
+    let t = this.paths.t ? 0 : 1;
+    let b = this.paths.b ? 0 : 1;
+    let l = this.paths.l ? 0 : 1;
+    let r = this.paths.r ? 0 : 1;
+
+    switch (this.type) {
+      case Maze.NODE_TYPE.PATH:
+      case Maze.NODE_TYPE.TARGET:
+        return (<View style={[styles.SquareShapeView, { top: this.top, left: this.left, width: this.cellSize, height: this.cellSize, borderTopWidth: t, borderBottomWidth: b, borderLeftWidth: l, borderRightWidth: r }]} />);
+      case Maze.NODE_TYPE.BOMB:
+        return this.drawBombNode(t, b, l, r);
+      case Maze.NODE_TYPE.POINT:
+        return this.drawPointNode(t, b, l, r);
+      case Maze.NODE_TYPE.HOLE:
+        return this.drawHoleNode(t, b, l, r);
+      default:
+        return null;
+    }
+
+  }
+
+  drawBombNode(t, b, l, r) {
+    return (
+      <View style={[styles.SquareShapeView, { top: this.top, left: this.left, width: this.cellSize, height: this.cellSize, borderTopWidth: t, borderBottomWidth: b, borderLeftWidth: l, borderRightWidth: r }]}>
+        <Text style={styles.bomb}>
+          {this.typeValue}
+        </Text>
+      </View>
+    );
+  }
+
+  drawPointNode(t, b, l, r) {
+    return (
+      <View style={[styles.SquareShapeView, { top: this.top, left: this.left, width: this.cellSize, height: this.cellSize, borderTopWidth: t, borderBottomWidth: b, borderLeftWidth: l, borderRightWidth: r }]}>
+        <Text style={styles.point}>
+          {this.typeValue}
+        </Text>
+      </View>
+    );
+  }
+
+  drawHoleNode(t, b, l, r) {
+    return (
+      <View style={[styles.SquareShapeView, { top: this.top, left: this.left, width: this.cellSize, height: this.cellSize, borderTopWidth: t, borderBottomWidth: b, borderLeftWidth: l, borderRightWidth: r }]}>
+        <View style={[styles.hole, { width: this.cellSize / 4, height: this.cellSize / 4, borderRadius: this.cellSize / 4 }]} />
+      </View>
+    );
+  }
+
 }
 
 class Paths {
@@ -251,6 +369,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     zIndex: 0
   },
+
+  point: {
+    color: 'blue',
+    fontSize: 15,
+  },
+
+  bomb: {
+    color: 'red',
+    fontSize: 15,
+  },
+
+  hole: {
+    backgroundColor: 'black'
+  }
 
 });
 
